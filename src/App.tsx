@@ -1,117 +1,97 @@
-import { useState, useRef, FormEvent, ChangeEvent } from 'react';
+import React from 'react';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as Yup from 'yup';
 import './App.css';
 
 type FormData = {
-  email: string;
-  password: string;
-  repeatPassword: string;
+	email: string;
+	password: string;
+	repeatPassword: string;
 };
 
+const validationSchema = Yup.object().shape({
+	email: Yup.string()
+		.required('Email не должен быть пустым')
+		.email('Некорректный email формат'),
+	password: Yup.string()
+		.required('Пароль не должен быть пустым')
+		.min(6, 'Пароль должен содержать не менее 6 символов'),
+	repeatPassword: Yup.string()
+		.oneOf([Yup.ref('password')], 'Пароли не совпадают')
+		.required('Повторите пароль'),
+});
+
 const sendFormData = (formData: FormData) => {
-  console.log(formData);
+	console.log(formData);
 };
 
 export const App: React.FC = () => {
-  const [formData, setFormData] = useState<FormData>({
-    email: '',
-    password: '',
-    repeatPassword: '',
-  });
-  const [errors, setErrors] = useState<Partial<FormData>>({});
+	const {
+		register,
+		handleSubmit,
+		formState: { errors },
+		setValue,
+		trigger,
+	} = useForm<FormData>({
+		resolver: yupResolver(validationSchema),
+	});
 
-  const submitButtonRef = useRef<HTMLButtonElement | null>(null);
+	const onSubmit = (data: FormData) => {
+		sendFormData(data);
+	};
 
-  const validateFields = () => {
-    const newErrors: Partial<FormData> = {};
+	return (
+		<div className='app'>
+			<h1>User Login</h1>
+			<form onSubmit={handleSubmit(onSubmit)}>
+				<div>
+					<input
+						{...register('email')}
+						type='email'
+						placeholder='Email'
+						onChange={(e) => {
+							setValue('email', e.target.value);
+							trigger('email');
+						}}
+					/>
+					{errors.email && (
+						<div className='errorLabel'>{errors.email.message}</div>
+					)}
+				</div>
 
-    if (!formData.email) {
-      newErrors.email = 'Email не должен быть пустым';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Некорректный email формат';
-    }
+				<div>
+					<input
+						{...register('password')}
+						type='password'
+						placeholder='Password'
+						onChange={(e) => {
+							setValue('password', e.target.value);
+							trigger('password');
+						}}
+					/>
+					{errors.password && (
+						<div className='errorLabel'>{errors.password.message}</div>
+					)}
+				</div>
 
-    if (formData.password.length < 6) {
-      newErrors.password = 'Пароль должен содержать не менее 6 символов';
-    }
+				<div>
+					<input
+						{...register('repeatPassword')}
+						type='password'
+						placeholder='Repeat Password'
+						onChange={(e) => {
+							setValue('repeatPassword', e.target.value);
+							trigger('repeatPassword');
+						}}
+					/>
+					{errors.repeatPassword && (
+						<div className='errorLabel'>{errors.repeatPassword.message}</div>
+					)}
+				</div>
 
-    if (formData.repeatPassword !== formData.password) {
-      newErrors.repeatPassword = 'Пароли не совпадают';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-  
-  const onFieldChange = ({target}: ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = target;
-    setFormData((prevFormData) => ({
-      ...prevFormData,
-      [name]: value,
-    }));
-  };
-
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (validateFields()) {
-      sendFormData(formData);
-    }
-    validateFields();
-  };
-
-  const onFieldBlur = () => {
-    if (validateFields()) {
-      submitButtonRef.current?.focus();
-    }
-  };
-
-  return (
-    <div className='app'>
-      <h1>User Login</h1>
-      <form onSubmit={onSubmit}>
-        <div>
-          <input
-            name='email'
-            type='email'
-            value={formData.email}
-            placeholder='Email'
-            onChange={onFieldChange}
-            onBlur={onFieldBlur}
-          />
-          {errors.email && <div className='errorLabel'>{errors.email}</div>}
-        </div>
-
-        <div>
-          <input
-            name='password'
-            type='password'
-            value={formData.password}
-            placeholder='Password'
-            onChange={onFieldChange}
-            onBlur={onFieldBlur}
-          />
-          {errors.password && <div className='errorLabel'>{errors.password}</div>}
-        </div>
-
-        <div>
-          <input
-            name='repeatPassword'
-            type='password'
-            value={formData.repeatPassword}
-            placeholder='Repeat Password'
-            onChange={onFieldChange}
-            onBlur={onFieldBlur}
-          />
-          {errors.repeatPassword && <div className='errorLabel'>{errors.repeatPassword}</div>}
-        </div>
-
-        <button
-          ref={submitButtonRef}
-          type='submit'
-          disabled={!!errors.email || !!errors.password || !!errors.repeatPassword}
-        >
-          Зарегистрироваться
-        </button>
-      </form>
-    </div>
-  );
+				<button type='submit'>Зарегистрироваться</button>
+			</form>
+		</div>
+	);
 };
